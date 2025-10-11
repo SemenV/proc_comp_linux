@@ -1,0 +1,86 @@
+@startuml ttt
+
+names --> [*]
+names : "AdrSrc"
+names : "IRWrite"
+names : "ALUSrcA"
+names : "ALUSrcB"
+names : "ALUOp"
+names : "ResultSrc"
+names : "PCUpdate" 
+names : "Branch"
+names : "RegWrite"
+names : "RegWrite"
+
+S0Fetch --> S1Decode
+S0Fetch : "AdrSrc = 0"
+S0Fetch : "IRWrite"
+S0Fetch : "ALUSrcA = 00"
+S0Fetch : "ALUSrcB = 10"
+S0Fetch : "ALUOp = 00"
+S0Fetch : "ResultSrc = 10"
+S0Fetch : "PCUpdate"
+
+S1Decode --> S2MemAdr
+S1Decode --> S6ExecuteR
+S1Decode --> S8ExecuteL
+S1Decode --> S9Jal
+S1Decode --> S10Beq
+S1Decode : "ALUSrcA = 01"
+S1Decode : "ALUSrcB = 01"
+S1Decode : "ALUOp = 00"
+
+ 
+
+S2MemAdr --> S3MemRead
+S2MemAdr --> S5MemWrite
+S2MemAdr : "ALUSrcA = 10"
+S2MemAdr : "ALUSrcB = 01"
+S2MemAdr : "ALUOp = 00"
+
+
+
+S6ExecuteR --> S7ALUWB
+S6ExecuteR : "ALUSrcA = 10"
+S6ExecuteR : "ALUSrcB = 00"
+S6ExecuteR : "ALUOp = 10"
+
+
+S8ExecuteL --> S7ALUWB
+S8ExecuteL : "ALUSrcA = 10"
+S8ExecuteL : "ALUSrcB = 01"
+S8ExecuteL : "ALUOp = 10"
+
+S9Jal --> S7ALUWB
+S9Jal : "ALUSrcA = 01"
+S9Jal : "ALUSrcB 10"
+S9Jal : "ALUOp = 00"
+S9Jal : "ResultSrc = 00"
+S9Jal : "PCUpdate"
+
+
+S10Beq --> S4MemWB
+S10Beq : "ALUSrcA = 10"
+S10Beq : "ALUSrcB 00"
+S10Beq : "ALUOp = 01"
+S10Beq : "ResultSrc = 00"
+S10Beq : "Branch"
+
+S3MemRead --> S4MemWB
+S3MemRead : "ResultSrc = 00"
+S3MemRead : "AdrSrc = 1"
+
+
+S5MemWrite --> S4MemWB
+S5MemWrite : "ResultSrc = 00"
+S5MemWrite : "AdrSrc = 1"
+S5MemWrite : "MemWrite"
+
+S7ALUWB --> S4MemWB
+S7ALUWB : "ResultSrc = 00"
+S7ALUWB : "RegWrite"
+
+S4MemWB --> S0Fetch
+S4MemWB : "ResultSrc = 01"
+S4MemWB : "RegWrite"
+@enduml
