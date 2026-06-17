@@ -42,6 +42,7 @@ class sec():
     self.states_arr = []
     self.names_arr  = []
     self.full_content_arr = []
+    self.root = None
 
   def print_s_nodes(self):
     for i in self.states_arr:
@@ -63,6 +64,9 @@ class sec():
         n = Node()
         n.name = i[2]
         self.states_arr.append(n)
+        if (n.name == 'S0Fetch'):
+          self.root = n
+
       else:
         r_array.append(i)
     self.full_content_arr = r_array
@@ -138,3 +142,74 @@ print('states_arr')
 s.print_s_nodes()
 
 print('full_content_arr = ')
+
+
+control_unit_sv_data = '''module control_unit
+(
+input IRWrite,
+input MemWrite,
+input AdrSrc,
+input PCWrite,
+input op,
+input funct3,
+input funct7,
+
+output reg RegWrite,
+output reg ImmSrc,
+output reg ALUSrcA,
+output reg ALUSrcB1,
+output reg ALUControl,
+output reg ResultSrc
+);
+''' 
+
+#typedef
+control_unit_sv_data += 'typedef enum '
+control_unit_sv_data += "{ "
+for state in s.states_arr:
+  control_unit_sv_data += state.name + ',\n'
+# , + space
+control_unit_sv_data = control_unit_sv_data[0:-2]
+control_unit_sv_data += " }"
+control_unit_sv_data += " state_ty;\n\n"
+
+#instance
+control_unit_sv_data += 'state_ty state, nextstate;\n\n'
+
+#logic for clock
+control_unit_sv_data += '''always_ff @(posedge clk, posedge reset)
+if (reset) state <= S0Fetch;
+else state <= nextstate;\n\n
+'''
+
+
+
+control_unit_sv_data += '''always_comb \n case (state)\n'''
+
+def recursion_collector(s: Node):
+  case_statment = ''
+  for arr, nod in s.children.items():
+    if (nod.name == 'S0Fetch'):
+      return ''
+    else:
+      case_statment += s.name + ' : case (op)\n'
+      for j in arr.conditions:
+        if (str(j) == '*' ):
+          case_statment += '    ' + ' op ' + ' : ' + 'nextstate = ' + nod.name + ';\n'
+        else:
+          case_statment += '    ' + str(j) + ' : ' + 'nextstate = ' + nod.name + ';\n'
+      case_statment += '    default: nextstate = state;\n'
+      case_statment += 'endcase\n'
+
+      case_statment += recursion_collector(nod) + '\n'
+
+
+  
+  return case_statment
+
+control_unit_sv_data += recursion_collector(s.root)  + '    default: nextstate = state;\n' +'endcase\nendmodule\n'
+
+
+with open('proc\export\control_unit\control_unit.sv', 'w', encoding='utf-8') as file:
+  file.write(control_unit_sv_data)
+

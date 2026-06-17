@@ -25,7 +25,7 @@ states : [S8ExecuteL]
 states : [S9Jal]
 states : [S10Beq]
 
-S0Fetch --> S1Decode : [1111]
+S0Fetch --> S1Decode : [*]
 S0Fetch : [AdrSrc = 0]
 S0Fetch : [IRWrite = 1]
 S0Fetch : [ALUSrcA = 00]
@@ -54,18 +54,18 @@ S2MemAdr : [ALUOp = 00]
 
 
 
-S6ExecuteR --> S7ALUWB : [*******]
+S6ExecuteR --> S7ALUWB : [*]
 S6ExecuteR : [ALUSrcA = 10]
 S6ExecuteR : [ALUSrcB = 00]
 S6ExecuteR : [ALUOp = 10]
 
 
-S8ExecuteL --> S7ALUWB : [*******]
+S8ExecuteL --> S7ALUWB : [*]
 S8ExecuteL : [ALUSrcA = 10]
 S8ExecuteL : [ALUSrcB = 01]
 S8ExecuteL : [ALUOp = 10]
 
-S9Jal --> S7ALUWB : [*******]
+S9Jal --> S7ALUWB : [*]
 S9Jal : [ALUSrcA = 01]
 S9Jal : [ALUSrcB = 10]
 S9Jal : [ALUOp = 00]
@@ -73,28 +73,28 @@ S9Jal : [ResultSrc = 00]
 S9Jal : [PCUpdate = *]
 
 
-S10Beq --> S4MemWB : [*******]
+S10Beq --> S4MemWB : [*]
 S10Beq : [ALUSrcA = 10]
 S10Beq : [ALUSrcB = 00]
 S10Beq : [ALUOp = 01]
 S10Beq : [ResultSrc = 00]
 S10Beq : [Branch = *]
 
-S3MemRead --> S4MemWB : [*******]
+S3MemRead --> S4MemWB : [*]
 S3MemRead : [ResultSrc = 00]
 S3MemRead : [AdrSrc = 1]
 
 
-S5MemWrite --> S4MemWB : [*******]
+S5MemWrite --> S4MemWB : [*]
 S5MemWrite : [ResultSrc = 00]
 S5MemWrite : [AdrSrc = 1]
 S5MemWrite : [MemWrite = 1]
 
-S7ALUWB --> S4MemWB : [*******]
+S7ALUWB --> S4MemWB : [*]
 S7ALUWB : [ResultSrc = 00]
 S7ALUWB : [RegWrite = 1]
 
-S4MemWB --> S0Fetch : [*******]
+S4MemWB --> S0Fetch : [*]
 S4MemWB : [ResultSrc = 01]
 S4MemWB : [RegWrite = 1]
 @enduml
