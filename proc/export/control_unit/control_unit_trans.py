@@ -184,7 +184,9 @@ else state <= nextstate;\n\n
 
 
 
-control_unit_sv_data += '''always_comb \n case (state)\n'''
+control_unit_sv_data += '''always_comb begin
+nextstate = state;
+case (state)\n'''
 
 def recursion_collector(s: Node):
   case_statment = ''
@@ -198,7 +200,7 @@ def recursion_collector(s: Node):
           case_statment += '    ' + ' op ' + ' : ' + 'nextstate = ' + nod.name + ';\n'
         else:
           case_statment += '    ' + str(j) + ' : ' + 'nextstate = ' + nod.name + ';\n'
-      case_statment += '    default: nextstate = state;\n'
+      
       case_statment += 'endcase\n'
 
       case_statment += recursion_collector(nod) + '\n'
@@ -207,7 +209,7 @@ def recursion_collector(s: Node):
   
   return case_statment
 
-control_unit_sv_data += recursion_collector(s.root)  + '    default: nextstate = state;\n' +'endcase\nendmodule\n'
+control_unit_sv_data += recursion_collector(s.root)  + 'endcase\nend\nendmodule\n'
 
 
 with open('proc\export\control_unit\control_unit.sv', 'w', encoding='utf-8') as file:
