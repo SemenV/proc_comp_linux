@@ -1,111 +1,99 @@
-module control_unit
+module swp
 (
-input IRWrite,
-input MemWrite,
-input AdrSrc,
-input PCWrite,
-input op,
-input funct3,
-input funct7,
+output  AdrSrc,
+output  IRWrite,
+output  [1:0]  ALUSrcA,
+output  [1:0]  ALUSrcB,
+output  [1:0]  ALUOp,
+output  [1:0]  ResultSrc,
+output   PCUpdate,
+output  Branch,
+output  RegWrite,
+output  MemWrite,
+output  [2:0]  ALUControl,
+output  [1:0] ImmSrc,
+input [6:0]  op,
+input [3:0]  func3,
+input [0:0]  func7_5
 
-output reg RegWrite,
-output reg ImmSrc,
-output reg ALUSrcA,
-output reg ALUSrcB1,
-output reg ALUControl,
-output reg ResultSrc
 );
-typedef enum { S0Fetch,
-S1Decode,
-S2MemAdr,
-S3MemRead,
-S4MemWB,
-S5MemWrite,
-S6ExecuteR,
+typedef enum reg [31:0] { 
 S7ALUWB,
-S8ExecuteL,
+S1Decode,
+S10Beq,
 S9Jal,
-S10Beq } state_ty;
+S6ExecuteR,
+S2MemAdr,
+S5MemWrite,
+S8ExecuteL,
+S4MemWB,
+S0Fetch,
+S3MemRead
+    
+} states_type;
 
-state_ty state, nextstate;
+states_type state, nextstate;
 
 always_ff @(posedge clk, posedge reset)
-if (reset) state <= S0Fetch;
-else state <= nextstate;
+    if (reset) state <= S0Fetch;
+    else state <= nextstate;
 
-
-always_comb begin
-nextstate = state;
+always_comb
+begin
 case (state)
-S0Fetch : case (op)
-     op  : nextstate = S1Decode;
-endcase
-S1Decode : case (op)
-    0000011 : nextstate = S2MemAdr;
-    0100011 : nextstate = S2MemAdr;
-endcase
-S2MemAdr : case (op)
-    0000011 : nextstate = S3MemRead;
-endcase
-S3MemRead : case (op)
-     op  : nextstate = S4MemWB;
+    S6ExecuteR : case(op)
+        op : nextstate =S7ALUWB;
+    endcase
+
+    S2MemAdr : case(op)
+        0000011 : nextstate =S3MemRead;
+        0100011 : nextstate =S5MemWrite;
+    endcase
+
+    S0Fetch : case(op)
+        op : nextstate =S1Decode;
+    endcase
+
+    S9Jal : case(op)
+        op : nextstate =S7ALUWB;
+    endcase
+
+    S5MemWrite : case(op)
+        op : nextstate =S4MemWB;
+    endcase
+
+    S7ALUWB : case(op)
+        op : nextstate =S4MemWB;
+    endcase
+
+    S3MemRead : case(op)
+        op : nextstate =S4MemWB;
+    endcase
+
+    S10Beq : case(op)
+        op : nextstate =S4MemWB;
+    endcase
+
+    S1Decode : case(op)
+        00000110100011 : nextstate =S2MemAdr;
+        0110011 : nextstate =S6ExecuteR;
+        0010011 : nextstate =S8ExecuteL;
+        1101111 : nextstate =S9Jal;
+        1100011 : nextstate =S10Beq;
+    endcase
+
+    S8ExecuteL : case(op)
+        op : nextstate =S7ALUWB;
+    endcase
+
+    S4MemWB : case(op)
+        op : nextstate =S0Fetch;
+    endcase
+
 endcase
 
 
-S2MemAdr : case (op)
-    0100011 : nextstate = S5MemWrite;
-endcase
-S5MemWrite : case (op)
-     op  : nextstate = S4MemWB;
-endcase
-
-
-
-S1Decode : case (op)
-    0110011 : nextstate = S6ExecuteR;
-endcase
-S6ExecuteR : case (op)
-     op  : nextstate = S7ALUWB;
-endcase
-S7ALUWB : case (op)
-     op  : nextstate = S4MemWB;
-endcase
-
-
-
-S1Decode : case (op)
-    0010011 : nextstate = S8ExecuteL;
-endcase
-S8ExecuteL : case (op)
-     op  : nextstate = S7ALUWB;
-endcase
-S7ALUWB : case (op)
-     op  : nextstate = S4MemWB;
-endcase
-
-
-
-S1Decode : case (op)
-    1101111 : nextstate = S9Jal;
-endcase
-S9Jal : case (op)
-     op  : nextstate = S7ALUWB;
-endcase
-S7ALUWB : case (op)
-     op  : nextstate = S4MemWB;
-endcase
-
-
-
-S1Decode : case (op)
-    1100011 : nextstate = S10Beq;
-endcase
-S10Beq : case (op)
-     op  : nextstate = S4MemWB;
-endcase
-
-
-
-endcase
 end
+
 endmodule
+    
