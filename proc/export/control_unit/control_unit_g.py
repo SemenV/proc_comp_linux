@@ -18,23 +18,24 @@ states_set = {
     'S10Beq',
 }
 
-names_w_type : dict[str,str] = {}
-names_w_type['AdrSrc'] = 'output '
-names_w_type['IRWrite'] = 'output '
-names_w_type['ALUSrcA'] = 'output  [1:0] '
-names_w_type['ALUSrcB'] = 'output  [1:0] '
-names_w_type['ALUOp'] = 'output  [1:0] '
-names_w_type['ResultSrc'] = 'output  [1:0] '
-names_w_type['PCUpdate'] = 'output  '
-names_w_type['Branch'] = 'output ' 
-names_w_type['RegWrite'] = 'output '
-names_w_type['MemWrite'] = 'output '
-names_w_type['ALUControl'] = 'output  [2:0] '
-names_w_type['ImmSrc'] = 'output  [1:0]'
+names_w_type_o : dict[str,str] = {}
+names_w_type_o['AdrSrc'] = 'output '
+names_w_type_o['IRWrite'] = 'output '
+names_w_type_o['ALUSrcA'] = 'output  [1:0] '
+names_w_type_o['ALUSrcB'] = 'output  [1:0] '
+names_w_type_o['ALUOp'] = 'output  [1:0] '
+names_w_type_o['ResultSrc'] = 'output  [1:0] '
+names_w_type_o['PCUpdate'] = 'output  '
+names_w_type_o['Branch'] = 'output ' 
+names_w_type_o['RegWrite'] = 'output '
+names_w_type_o['MemWrite'] = 'output '
+names_w_type_o['ALUControl'] = 'output  [2:0] '
+names_w_type_o['ImmSrc'] = 'output  [1:0]'
 
-names_w_type['op'] = 'input [6:0] '
-names_w_type['func3'] = 'input [3:0] '
-names_w_type['func7_5'] = 'input [0:0] '
+names_w_type_i : dict[str,str] = {}
+names_w_type_i['op'] = 'input [6:0] '
+names_w_type_i['func3'] = 'input [3:0] '
+names_w_type_i['func7_5'] = 'input [0:0] '
 
 
 class g_Arrow():
@@ -142,7 +143,7 @@ pars(full_content,parallel)
 print("states_set ==========================================")
 print(states_set)
 
-def checker(parallel,states_set,names_w_type):
+def checker(parallel,states_set,names_w_type_o):
     states : set[str] = set()
     for i in parallel:
         states.add(i.name)
@@ -152,7 +153,7 @@ def checker(parallel,states_set,names_w_type):
     #     print(diff)
     #     raise Exception('Wrong states')
 
-    names_key = names_w_type.keys()
+    names_key = names_w_type_o.keys()
     for j in parallel:
         diff2 = (names_key - j.force) |  (j.force - names_key)
         print('j[name] = ' + str(j.name))
@@ -164,7 +165,7 @@ def checker(parallel,states_set,names_w_type):
 
 
 
-checker(parallel,states_set,names_w_type)
+checker(parallel,states_set,names_w_type_o)
 
 
 def new_line(index,length):
@@ -173,30 +174,34 @@ def new_line(index,length):
 
 def generate(
         in_out,
+        out,
         states,
         parallel,
         start_node = 'S0Fetch',
         ):
     
     in_out_str = ''
-    for index, (name, direction) in enumerate(in_out.items()):
-        in_out_str += direction + ' ' + name + new_line(index,len(in_out))
+    for name, direction in (in_out.items() | out.items()):
+        in_out_str += direction + ' ' + name + ',\n'
+    in_out_str = in_out_str[:-2]
 
     states_str = ''
     for index, (state) in enumerate(states):
         states_str += state + new_line(index,len(states))
+
+    forced_default = ''
+    for forced_name in in_out.keys():
+        forced_default += forced_name + ' = 0;\n'
 
     outer_string = 'case (state)\n'
     for node in parallel:
         outer_string += '    ' + node.name + ' : '
         outer_string += 'begin\n'
 
+        outer_string += '        limit = ' + '32\'d' + str(node.repeat) + ';\n'
         f_val_res = ''
         for forced_name, forced_val in node.force.items():
-            if (forced_val == '*'):
-                f_val_res += '        ' +forced_name + ' = ' + forced_val_prior + ';\n'
-            else:
-                f_val_res += '        ' +forced_name + ' = ' + forced_val + ';\n'
+            f_val_res += '        ' +forced_name + ' = \'b' + (forced_val_prior if (forced_val == '*') else forced_val) + ';\n'    
 
         outer_string += f_val_res
 
@@ -207,11 +212,13 @@ def generate(
             steps_str = ''
             node_condition = ''
             #conditions inner
-            for cond_index , (cond) in enumerate(arrow.conditions):
+            for cond in arrow.conditions:
                 if (cond == '*'):
-                    node_condition += 'op'
+                    node_condition += 'default' + ','
                 else:
-                    node_condition += cond
+                    node_condition += cond + ','
+            node_condition = node_condition[:-1]
+                
             steps_str += '            ' +node_condition + ' : nextstate =' + node_child.name + ';'
 
             inner_string += steps_str + '\n'
@@ -234,12 +241,29 @@ typedef enum reg [31:0] {{
 
 states_type state, nextstate;
 
+wire [31:0] limit;
+reg [31:0] cnt = 0;
+reg ena;
+
+always_ff @(posedge clk)
+    if (reset)
+        cnt <= 0;
+    else
+    if (cnt == limit)
+        cnt <= 0;
+    else 
+        cnt <= cnt + 1;
+			 
+assign ena = cnt == limit ;
+
 always_ff @(posedge clk, posedge reset)
     if (reset) state <= {start_node};
-    else state <= nextstate;
+    else if (ena) state <= nextstate;
 
 always_comb
 begin
+limit = 0;
+{forced_default}
 nextstate = {root_state};
 {outer_string}
 end
@@ -249,4 +273,4 @@ endmodule
     
 
 with open('proc\export\control_unit\control_unit.sv', 'w', encoding='utf-8') as file:
-  file.write(generate(names_w_type,states_set,parallel))
+  file.write(generate(names_w_type_o,names_w_type_i,states_set,parallel))
