@@ -1,6 +1,9 @@
 import re
 from enum import Enum, auto
 
+root_state = 'S0Fetch'
+forced_val_prior = '0';
+
 states_set = {
     'S0Fetch',
     'S1Decode',
@@ -186,10 +189,19 @@ def generate(
     outer_string = 'case (state)\n'
     for node in parallel:
         outer_string += '    ' + node.name + ' : '
+        outer_string += 'begin\n'
 
+        f_val_res = ''
+        for forced_name, forced_val in node.force.items():
+            if (forced_val == '*'):
+                f_val_res += '        ' +forced_name + ' = ' + forced_val_prior + ';\n'
+            else:
+                f_val_res += '        ' +forced_name + ' = ' + forced_val + ';\n'
+
+        outer_string += f_val_res
 
         #inner case
-        inner_string = 'case(op)\n'
+        inner_string = '        ' +'case(op)\n'
         for arrow, node_child in node.children.items():
 
             steps_str = ''
@@ -200,17 +212,20 @@ def generate(
                     node_condition += 'op'
                 else:
                     node_condition += cond
-            steps_str += '        ' +node_condition + ' : nextstate =' + node_child.name + ';'
+            steps_str += '            ' +node_condition + ' : nextstate =' + node_child.name + ';'
 
             inner_string += steps_str + '\n'
 
 
-        outer_string +=  inner_string + '    ' + 'endcase\n\n'
+        outer_string +=  inner_string + '        ' + 'endcase\n'
+        outer_string += 'end\n\n'
 
     outer_string += 'endcase\n\n'
 
     return f"""module control_unit
 (
+input clk,
+input reset,
 {in_out_str}
 );
 typedef enum reg [31:0] {{ 
@@ -225,6 +240,7 @@ always_ff @(posedge clk, posedge reset)
 
 always_comb
 begin
+nextstate = {root_state};
 {outer_string}
 end
 
@@ -234,22 +250,3 @@ endmodule
 
 with open('proc\export\control_unit\control_unit.sv', 'w', encoding='utf-8') as file:
   file.write(generate(names_w_type,states_set,parallel))
-
-# def print_g(node: g_Node,states_set,names_w_type):
-
-#     node.print_node()
-#     for arr, nod in node.children.items():
-#         if (nod.name == 'S0Fetch'):
-#             return 
-#         print_g(nod,states_set,names_w_type)
-
-#     # if ((node.name == 'S0Fetch') & (len(states_set) == 0)):
-#     #     pass
-#     # else:
-#     #     print('Not all states shown')
-#     #     print(states_set)
-#     #     raise Exception()
-
-
-# # print_g(root,states_set,names_w_type)
-# print(states_set)
