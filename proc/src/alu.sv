@@ -1,5 +1,5 @@
 module alu #(parameter WIDTH = 32)(
-input logic [2:0] ALUConrol,
+input logic [2:0] ALUControl,
 input logic [WIDTH-1:0] A,
 input logic [WIDTH-1:0] B,
 output logic [WIDTH-1:0] ALUResult,
@@ -20,11 +20,11 @@ logic [WIDTH-1:0] diff001;
 logic [WIDTH-1:0] sum000;
 
 always_comb begin
-	xor0 = ALUConrol[0] ^ B[WIDTH-1] ^ A[WIDTH-1];
+	xor0 = ALUControl[0] ^ B[WIDTH-1] ^ A[WIDTH-1];
 	xor1 = A[WIDTH-1] ^ Sum[WIDTH-1];
-	notAluC1 = ~ ALUConrol[1];
+	notAluC1 = ~ ALUControl[1];
 	andLeft = xor0 && xor1 && notAluC1;
-	muxRight0 = ALUConrol[0] ? ((~B) + 1) : B; 
+	muxRight0 = ALUControl[0] ? ((~B) + 1) : B; 
 	{Cout,Sum}= muxRight0 + A;
 	leftXor = andLeft ^ Sum[WIDTH-1];
 	extend101 = {(WIDTH){leftXor}};
@@ -32,7 +32,7 @@ always_comb begin
 	and010 = A & B; 
 	diff001 = Sum;
 	sum000 = Sum;
-	case (ALUConrol)
+	case (ALUControl)
 		{1'b0,1'b0,1'b0}: ALUResult = sum000;
 		{1'b0,1'b0,1'b1}: ALUResult = diff001;
 		{1'b0,1'b1,1'b0}: ALUResult = and010;

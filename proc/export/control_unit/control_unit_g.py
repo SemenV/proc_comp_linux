@@ -19,18 +19,18 @@ states_set = {
 }
 
 names_w_type_o : dict[str,str] = {}
-names_w_type_o['AdrSrc'] = 'output '
-names_w_type_o['IRWrite'] = 'output '
-names_w_type_o['ALUSrcA'] = 'output  [1:0] '
-names_w_type_o['ALUSrcB'] = 'output  [1:0] '
-names_w_type_o['ALUOp'] = 'output  [1:0] '
-names_w_type_o['ResultSrc'] = 'output  [1:0] '
-names_w_type_o['PCUpdate'] = 'output  '
-names_w_type_o['Branch'] = 'output ' 
-names_w_type_o['RegWrite'] = 'output '
-names_w_type_o['MemWrite'] = 'output '
-names_w_type_o['ALUControl'] = 'output  [2:0] '
-names_w_type_o['ImmSrc'] = 'output  [1:0]'
+names_w_type_o['AdrSrc'] = 'output reg '
+names_w_type_o['IRWrite'] = 'output reg '
+names_w_type_o['ALUSrcA'] = 'output reg  [1:0] '
+names_w_type_o['ALUSrcB'] = 'output reg  [1:0] '
+names_w_type_o['ALUOp'] = 'output reg  [1:0] '
+names_w_type_o['ResultSrc'] = 'output reg  [1:0] '
+names_w_type_o['PCUpdate'] = 'output reg  '
+names_w_type_o['Branch'] = 'output reg ' 
+names_w_type_o['RegWrite'] = 'output reg '
+names_w_type_o['MemWrite'] = 'output reg '
+names_w_type_o['ALUControl'] = 'output reg  [2:0] '
+names_w_type_o['ImmSrc'] = 'output reg  [1:0]'
 
 names_w_type_i : dict[str,str] = {}
 names_w_type_i['op'] = 'input [6:0] '
@@ -193,7 +193,7 @@ def generate(
         states_str += state + new_line(index,len(states))
 
     forced_default = ''
-    for forced_name in in_out.keys():
+    for forced_name in out.keys():
         forced_default += forced_name + ' = 0;\n'
 
     outer_string = 'case (state)\n'
@@ -244,7 +244,7 @@ typedef enum reg [31:0] {{
 
 states_type state, nextstate;
 
-wire [31:0] limit;
+reg [31:0] limit;
 reg [31:0] cnt = 0;
 reg ena;
 

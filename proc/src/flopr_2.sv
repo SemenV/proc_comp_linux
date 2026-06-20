@@ -5,12 +5,10 @@ input [WIDTH-1:0] ReadData,
 output  logic [WIDTH-1:0] Data);
 
 always_ff @(posedge clk, posedge rst)
-	if (rst) q <= 0;
-	else
-		if (EN)  begin
-			Instr <= RD;
-			OldPC <= PC;
-		end
-		
+    if (rst) Data <= 0;
+    else
+        if (EN)  begin
+            Data <= ReadData;
+        end
 
-endmodule 
+endmodule

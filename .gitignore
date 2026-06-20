@@ -1,1 +1,8 @@
 proc/export/control_unit/control_unit.sv
+proc/compile_files/transcript
+
+proc/compile_files/work/
+proc/compile_files/work/*
+proc/compile_files/modelsim.ini
+proc/compile_files/transcript
+proc/compile_files/vsim.wlf

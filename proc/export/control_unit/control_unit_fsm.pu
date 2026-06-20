@@ -10,7 +10,6 @@ S0Fetch : [ALUSrcB = 10]
 S0Fetch : [ALUOp = 00]
 S0Fetch : [ResultSrc = 10]
 S0Fetch : [PCUpdate = 1]
-S0Fetch ---> 9
 
 S1Decode --> S2MemAdr : [0000011 | 0100011]
 S1Decode --> S6ExecuteR : [0110011]
