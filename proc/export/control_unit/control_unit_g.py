@@ -181,7 +181,10 @@ def generate(
         ):
     
     in_out_str = ''
-    for name, direction in (in_out.items() | out.items()):
+    for name, direction in (in_out.items()):
+        in_out_str += direction + ' ' + name + ',\n'
+
+    for name, direction in (out.items()):
         in_out_str += direction + ' ' + name + ',\n'
     in_out_str = in_out_str[:-2]
 
@@ -273,4 +276,4 @@ endmodule
     
 
 with open('proc\export\control_unit\control_unit.sv', 'w', encoding='utf-8') as file:
-  file.write(generate(names_w_type_o,names_w_type_i,states_set,parallel))
+  file.write(generate(names_w_type_i,names_w_type_o,states_set,parallel))
