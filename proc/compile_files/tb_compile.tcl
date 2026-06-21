@@ -7,6 +7,8 @@ vlog -timescale "1ns / 100ps" -hazards -sv ../src/*.sv
 vlog -timescale "1ns / 100ps" -hazards -sv  ../tests/proc_full/*.sv
 
 
+vlog -timescale "1ns / 100ps" -hazards -sv  ../export/control_unit/*.sv
+
 vsim -novopt work.tb_RISC_V_TOP
 
 add wave -recursive *

@@ -1,8 +1,8 @@
 import re
 from enum import Enum, auto
 
-root_state = 'S0Fetch'
-forced_val_prior = '0';
+root_state = 'S0Fetch'  #/////////////////////////////////param
+forced_val_prior = '0'; #/////////////////////////////////param
 
 states_set = {
     'S0Fetch',
@@ -25,22 +25,24 @@ names_w_type_o['ALUSrcA'] = 'output reg  [1:0] '
 names_w_type_o['ALUSrcB'] = 'output reg  [1:0] '
 names_w_type_o['ALUOp'] = 'output reg  [1:0] '
 names_w_type_o['ResultSrc'] = 'output reg  [1:0] '
-names_w_type_o['PCUpdate'] = 'output reg  '
-names_w_type_o['Branch'] = 'output reg ' 
+# names_w_type_o['PCUpdate'] = 'output reg  '
+# names_w_type_o['Branch'] = 'output reg ' 
 names_w_type_o['RegWrite'] = 'output reg '
 names_w_type_o['MemWrite'] = 'output reg '
-names_w_type_o['ALUControl'] = 'output reg  [2:0] '
-names_w_type_o['ImmSrc'] = 'output reg  [1:0]'
+# names_w_type_o['ImmSrc'] = 'output reg  [1:0]'
+names_w_type_o['PCWrite'] = 'output reg '
 
 names_w_type_i : dict[str,str] = {}
 names_w_type_i['op'] = 'input [6:0] '
 names_w_type_i['func3'] = 'input [3:0] '
 names_w_type_i['func7_5'] = 'input [0:0] '
+names_w_type_i['Zero'] = 'input [0:0] '
 
 
 class g_Arrow():
     def __init__(self):
         self.conditions = []
+        self.condition_size = '7\'b'; #/////////////////////////////////param
 
 class g_Node():
     def __init__(self):
@@ -76,6 +78,7 @@ def find_node_by_name(parallel,name):
 
 def pars(full_content,parallel : set[g_Node]):
     full_content = full_content.replace(' ','')
+    full_content = full_content.replace('_','')
     full_content =  re.split('\n',full_content)
 
     splitters = '(->|'
@@ -219,7 +222,7 @@ def generate(
                 if (cond == '*'):
                     node_condition += 'default' + ','
                 else:
-                    node_condition += cond + ','
+                    node_condition += arrow.condition_size + cond + ','
             node_condition = node_condition[:-1]
                 
             steps_str += '            ' +node_condition + ' : nextstate =' + node_child.name + ';'

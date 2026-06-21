@@ -5,8 +5,8 @@ output logic [WIDTH-1:0] mux_0_o);
 
 always_comb
     case (control)
-        {2'b00}: mux_0_o = mux0_0_i;
-        {2'b01}: mux_0_o =mux0_1_i;
+        {1'b0}: mux_0_o = mux0_0_i;
+        {1'b1}: mux_0_o =mux0_1_i;
     endcase
 
 endmodule
