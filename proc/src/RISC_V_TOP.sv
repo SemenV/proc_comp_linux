@@ -154,7 +154,7 @@ aludec ad(
 
 extend extend_inst(
 .Instr(Instr[31:7]),
-.ImmSrc(op[6:0]),
+.ImmSrc(op[6:5]),
 .ImmExt(ImmExt)
 );
 
