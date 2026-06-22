@@ -7,10 +7,11 @@ S0Fetch : [AdrSrc = 0]
 
 S0Fetch : [ALUOp = 00]
 S0Fetch : [ALUSrcA = 00]
-S0Fetch : [ALUSrcB = 00]
-S0Fetch : [ResultSrc = 00]
+S0Fetch : [ALUSrcB = 10]
+S0Fetch : [ResultSrc = 10]
 S0Fetch : [MemWrite = 0]
 S0Fetch : [RegWrite = 0]
+S0Fetch : [PCWrite = 1]
 
 
 
@@ -26,6 +27,7 @@ S1Decode : [ALUSrcB = 00]
 S1Decode : [ResultSrc = 00]
 S1Decode : [MemWrite = 0]
 S1Decode : [RegWrite = 0]
+S1Decode : [PCWrite = 0]
 
 
 
@@ -40,6 +42,7 @@ S2MemAdr : [AdrSrc = 0]
 S2MemAdr : [ResultSrc = 00]
 S2MemAdr : [MemWrite = 0]
 S2MemAdr : [RegWrite = 0]
+S2MemAdr : [PCWrite = 0]
 
 
 
@@ -52,13 +55,14 @@ S3MemRead : [ALUSrcA = 00]
 S3MemRead : [ALUSrcB = 00]
 S3MemRead : [MemWrite = 0]
 S3MemRead : [RegWrite = 0]
+S3MemRead : [PCWrite = 0]
 
 
 
 
 
 
-S5MemWrite --> S4MemWB : [*]
+S5MemWrite --> S0Fetch : [*]
 S5MemWrite : [ResultSrc = 00]
 S5MemWrite : [AdrSrc = 1]
 S5MemWrite : [MemWrite = 1]
@@ -68,6 +72,7 @@ S5MemWrite : [ALUOp = 00]
 S5MemWrite : [ALUSrcA = 00]
 S5MemWrite : [ALUSrcB = 00]
 S5MemWrite : [RegWrite = 0]
+S5MemWrite : [PCWrite = 0]
 
 
 
@@ -76,10 +81,12 @@ S4MemWB : [ResultSrc = 01]
 S4MemWB : [RegWrite = 1]
 
 
+
 S4MemWB : [IRWrite = 0]
 S4MemWB : [AdrSrc = 0]
 S4MemWB : [ALUOp = 00]
 S4MemWB : [ALUSrcA = 00]
 S4MemWB : [ALUSrcB = 00]
 S4MemWB : [MemWrite = 0]
+S4MemWB : [PCWrite = 0]
 @enduml

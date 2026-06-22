@@ -13,18 +13,18 @@ logic AdrSrc;
 logic IRWrite;
 logic RegWrite;
 logic [31:0] regf_a1_i,regf_a2_i,regf_a3_i;
-logic [31:0] RD1,RD2,A,B;
+logic [31:0] RD1,RD2,A,BSig;
 logic [31:0] OldPC;
 logic [1:0] AluSrcA;
 logic [31:0] SrcA,SrcB;
 logic [31:0] ImmExt;
-logic [1:0] AluSrcB;
+logic [1:0] ALUSrcB;
 logic [2:0] ALUControl;
 logic [31:0] ALUResult;
 logic Zero;
 logic [31:0] ALUOut;
 logic [1:0] ResultSrc;
-logic [31:0] op;
+logic [6:0] op;
 logic [31:0] Instr;
 logic [31:0] func3;
 logic [31:0] func7_5;
@@ -32,9 +32,9 @@ logic [1:0] ALUOp;
 logic [1:0] ImmSrc;
 logic MemWrite;
 
-assign regf_a1_i = data_4m_mem[19:15];
-assign regf_a2_i = data_4m_mem[24:20];
-assign regf_a3_i = data_4m_mem[11:7];
+assign regf_a1_i = Instr[19:15];
+assign regf_a2_i = Instr[24:20];
+assign regf_a3_i = Instr[11:7];
 
 assign op = Instr[6:0];
 assign func3 = Instr [14:12];
@@ -61,7 +61,7 @@ mem mem_inst(
 .rst(rst),
 .adr(Adr),
 .ena(MemWrite),
-.din(),
+.din(BSig),
 .dout(data_4m_mem)
 );
 
@@ -101,7 +101,7 @@ flopr_3 flopr__inst_q (
 .RD1(RD1),
 .RD2(RD2),
 .A(A),
-.B(B)
+.B(BSig)
 );
 
 mux_3 mux_3_inst (
@@ -113,9 +113,9 @@ mux_3 mux_3_inst (
 );
 
 mux_4 mux_4_inst (
-.WriteData(B),
+.WriteData(BSig),
 .ImmExt(ImmExt),
-.AluSrcB(AluSrcB),
+.ALUSrcB(ALUSrcB),
 .SrcB(SrcB)
 );
 
@@ -169,7 +169,7 @@ control_unit control_unit_inst(
 .ALUSrcA(ALUSrcA),
 .ALUSrcB(ALUSrcB),
 .ResultSrc(ResultSrc),
-// .PCWrite(PCWrite),
+.PCWrite(PCWrite),
 // .Branch,
 .RegWrite(RegWrite),
 .MemWrite(MemWrite),
