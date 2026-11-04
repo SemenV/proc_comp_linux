@@ -11,37 +11,17 @@ entity spi_vhdl_e is
       clk: in std_logic;
       fromRX: in std_logic;
       value : out std_logic_vector (7 downto  0);
-      -- led: out std_logic;
-      -- led2: out std_logic;
       reset: in std_logic
-
   );
 
   attribute chip_pin : string;
   
   attribute chip_pin of clk : signal is "E1"; 
   attribute chip_pin of fromRX : signal is "F14"; 
-  -- attribute chip_pin of led : signal is "L14";
-  -- attribute chip_pin of led2 : signal is "L13";
   attribute chip_pin of reset : signal is "J14";
   attribute chip_pin of value: signal is "C3,A2,B3,A3,B4,A4,B5,A5";
 
-
-
-  -- attribute chip_pin of my_pin: signal is "4, , 6";
 end;
-
--- entity clks is
---   generic (
---     clk_counter : integer  range 0 to 1302
---   );
---   port (
---     clk_in: in bit;
---     clk_out : out bit
---   );
---   variable clk_in_cnt : integer range 0 to clk_counter;
--- end;
-
 
 architecture synth of spi_vhdl_e is 
 signal clk_2x : std_logic;
@@ -75,18 +55,6 @@ begin
       end if;
     end if;
   end process;
-
-
-
-  -- process (clk_mux,reset) begin
-  --   if (rising_edge(clk_mux)) then
-  --     if (reset = '0') then
-  --       bit_val <= (others => '0');
-  --     elsif ((state = count) or (next_state = count)) then
-  --       bit_val <=bit_val(6 downto 0) & fromRX;
-  --     end if;
-  --   end if;
-  -- end process;
 
   value <= bit_val;
   
