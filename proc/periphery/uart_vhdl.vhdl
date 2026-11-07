@@ -2,13 +2,30 @@ library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;
 
-entity spi_vhdl_e is
+entity TOP_level_loopback is
+  port(
+    global_fpga_clk : in std_logic
+  );
+
+
+
+end TOP_level_loopback;
+
+
+
+use IEEE.STD_LOGIC_1164.ALL;
+use IEEE.NUMERIC_STD.ALL;
+
+
+entity spi_rx is
   generic (
     cnt_limit_spi: integer := 1302
   );
 
   port (
-      clk: in std_logic;
+      clk_in: in std_logic;
+      DV_I: in std_logic;
+      BUSY: out std_logic;
       fromRX: in std_logic;
       value : out std_logic_vector (7 downto  0);
       reset: in std_logic
@@ -16,14 +33,13 @@ entity spi_vhdl_e is
 
   attribute chip_pin : string;
   
-  attribute chip_pin of clk : signal is "E1"; 
+  attribute chip_pin of clk_in : signal is "E1"; 
   attribute chip_pin of fromRX : signal is "F14"; 
   attribute chip_pin of reset : signal is "J14";
   attribute chip_pin of value: signal is "C3,A2,B3,A3,B4,A4,B5,A5";
+end spi_rx;
 
-end;
-
-architecture synth of spi_vhdl_e is 
+architecture synth of spi_rx is 
 signal clk_2x : std_logic;
 signal spi_clk : std_logic;
 signal sw_spi_clk : std_logic;
@@ -32,8 +48,24 @@ signal state, next_state : statetype;
 signal clk_mux : std_logic;
 signal bit_counter : std_logic_vector (7 downto  0);
 signal bit_val : std_logic_vector (7 downto  0);
+signal clk : std_logic;
 
 begin
+  process (all)
+    begin
+      if (DV_I) then
+        clk <= clk_in;
+      else
+        clk <= '0';
+      end if;
+      if (state = start) then
+        BUSY <= '0';
+      else
+        BUSY <= '1';
+      end if;
+    end process;
+
+
   process (clk)
     variable cnt : integer range 0 to cnt_limit_spi := 0;
   begin
