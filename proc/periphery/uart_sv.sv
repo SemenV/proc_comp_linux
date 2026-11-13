@@ -28,6 +28,10 @@ wire fifo_rx_rd_en;
 wire tx_str;
 wire tx_busy;
 
+wire clk_spi_en_tx;
+wire clk_spi_en_rx;
+wire clock_global;
+
 reg [31:0] cnt_spi_2x = 0;
 reg clk_spi_2x = 0;
 always_ff @ ( posedge clk)
@@ -42,20 +46,24 @@ else
 uart_loopback_fsm uart_loopback_fsm_inst(
     .clk(clk_spi_2x),
     .rst_n(reset),
+    .clock_global(clock_global),
     .fifo_rx_data(fifo_rx_data),
     .fifo_rx_empty(fifo_rx_empty),
     .fifo_rx_rd_en(fifo_rx_rd_en),
     .rx_busy(rx_busy),
+    .clk_spi_en_rx(clk_spi_en_rx),
 
     .tx_data(fifo_tx_data),
     .tx_str(tx_str),
     .tx_busy(tx_busy),
+    .clk_spi_en_tx(clk_spi_en_tx),
     .stt(error)
 );
 
 uart_rx_sv uart_rx_sv_inst (
-.clk_spi_2x(clk_spi_2x),
+.clk_spi_en_rx(clk_spi_en_rx),
 .fromRX(fromRX),
+.clock_global(clock_global),
 .reset(reset),
 .fifo_rx_rd_en(fifo_rx_rd_en),
 .fifo_rx_empty(fifo_rx_empty),
@@ -66,46 +74,44 @@ uart_rx_sv uart_rx_sv_inst (
 assign value = fifo_rx_data;
 
 uart_tx uart_tx_inst (
-    .clk(clk_spi_2x),
     .rst_n(reset),
     .tx_str(tx_str),
     .tx_data(fifo_tx_data),
     .tx_busy(tx_busy),
-    .tx_out(spi_data_o)
+    .tx_out(spi_data_o),
+    .clk_spi_en_tx(clk_spi_en_tx),
+    .clock_global(clock_global)
 );
 
 endmodule
 
 
 module uart_rx_sv (
-input wire clk_spi_2x,
+input wire clock_global,
 input wire fromRX,
 input wire reset,
 input wire fifo_rx_rd_en,
 output reg fifo_rx_empty = 1,
 output wire rx_busy,
-output wire [7:0] fifo_rx_data
-
+output wire [7:0] fifo_rx_data,
+output wire clk_spi_en_rx
 );
 wire trans;
-reg clk_spi = 0;
+
 
 reg [31:0] bit_counter = 0;
 typedef enum logic [7:0] {start,count,stop} states;
 states cur_state = start;
 states next_state = start;
 
+wire clk_mux;
 
-assign clk_spi_en = ((next_state == count) || (next_state == stop) || (next_state == start));
+assign clk_spi_en_rx = ((next_state == count) || (next_state == stop) || (next_state == start));
 assign rx_busy = ~((cur_state == next_state) && (next_state == start));
 assign trans = ((cur_state == count) && (next_state == stop));
 
-always_ff @(posedge clk_spi_2x)	
-  if (clk_spi_en)
-    clk_spi = ~clk_spi;
 
-
-always_ff @(posedge clk_spi_2x or negedge reset)
+always_ff @(posedge clock_global or negedge reset)
   if (~reset)
   fifo_rx_empty <= 1;
   else
@@ -115,7 +121,7 @@ always_ff @(posedge clk_spi_2x or negedge reset)
     fifo_rx_empty <= 1;
 
 
-always_ff @(posedge clk_mux or negedge reset)
+always_ff @(posedge clock_global or negedge reset)
   if (~reset) begin
     bit_counter <= 0;
     fifo_rx_data <= 0;
@@ -123,18 +129,14 @@ always_ff @(posedge clk_mux or negedge reset)
   else if (cur_state == count)
     begin
       bit_counter <= bit_counter + 1;
-      fifo_rx_data       <= {fromRX,fifo_rx_data[7:1]};
+      fifo_rx_data <= {fromRX,fifo_rx_data[7:1]};
 
     end
     else
       bit_counter <= 0;
 
 
-
-wire clk_mux;
-assign clk_mux = clk_spi_en ? clk_spi : clk_spi_2x;
-
-always_ff @(posedge clk_mux or negedge reset)
+always_ff @(posedge clock_global or negedge reset)
   if (~reset)
     cur_state <= start;
   else
@@ -159,86 +161,93 @@ module uart_loopback_fsm #(
     parameter DATA_WIDTH = 8
 )(
     input  logic                  clk,
-    input  logic                  rst_n,       // Асинхронный сброс активным нулем
+    input  logic                  rst_n,
 
-    // Интерфейс RX (приемник и FIFO)
-    input  logic [DATA_WIDTH-1:0] fifo_rx_data,  // Данные с выхода FIFO
-    input  logic                  fifo_rx_empty, // Флаг пустоты FIFO (опционально, но рекомендуется)
-    output logic                  fifo_rx_rd_en, // Строб чтения из FIFO
-    input  logic                  rx_busy,       // Флаг занятости приемника SPI
 
-    // Интерфейс TX (передатчик)
-    output logic [DATA_WIDTH-1:0] tx_data,       // Данные для отправки
-    output logic                  tx_str,        // Строб старта передачи (1 такт)
-    input  logic                  tx_busy,        // Флаг занятости передатчика SPI
-    output logic stt = 0
+    input  logic [DATA_WIDTH-1:0] fifo_rx_data,
+    input  logic                  fifo_rx_empty,
+    output logic                  fifo_rx_rd_en,
+    input  logic                  rx_busy,
+
+
+    output logic [DATA_WIDTH-1:0] tx_data,
+    output logic                  tx_str,
+    input  logic                  tx_busy,
+    output logic stt = 0,
+
+    input wire clk_spi_en_rx,
+    input wire clk_spi_en_tx,
+    output wire clock_global
 );
 
-    // Определение состояний автомата
+
     typedef enum logic [2:0] {
-        ST_IDLE_RX,      // Ожидание завершения приема и наличия данных
-        ST_READ_FIFO,    // Формирование строба чтения из FIFO
-        ST_LATCH_DATA,   // Фиксация данных (ожидание 1 такт для стандартного FIFO)
-        ST_SEND_TX,      // Проверка готовности TX и запуск передачи
-        ST_WAIT_TX_START,// Ожидание установки флага tx_busy
-        ST_WAIT_TX_DONE  // Ожидание завершения передачи (сброса tx_busy)
+        ST_IDLE_RX,
+        ST_READ_FIFO,
+        ST_LATCH_DATA,
+        ST_SEND_TX,
+        ST_WAIT_TX_START,
+        ST_WAIT_TX_DONE
     } state_t;
     
 
     state_t state, next_state;
     logic [DATA_WIDTH-1:0] data_reg;
+    reg clk_spi = 0;
+    wire clk_mux_en;
+
+    always_ff @(posedge clk)	
+      if (clk_mux_en)
+        clk_spi = ~clk_spi;
+
+    assign clk_mux_en = (clk_spi_en_rx  ) || ( clk_spi_en_tx && ( ( state == ST_SEND_TX ) || (state == ST_WAIT_TX_START ) ) );
+
+    assign clock_global = clk_mux_en ? clk_spi : clk;
 
     always_ff @(posedge clk, negedge rst_n)
     if (~rst_n )
     stt <= 0;
     else
-      if (state == ST_WAIT_TX_DONE) 
+      if (state == ST_READ_FIFO) 
         stt <= 1;
 
 
-    // 1. Регистр состояния
-    always_ff @(posedge clk or negedge rst_n) begin
+
+    always_ff @(posedge clock_global or negedge rst_n) begin
         if (!rst_n)
             state <= ST_IDLE_RX;
         else
             state <= next_state;
     end
 
-    // 2. Логика переходов
+
     always_comb begin
         next_state = state;
         case (state)
             ST_IDLE_RX: begin
-                // Ждем, пока приемник освободится и в FIFO появятся данные
                 if ((~rx_busy) && (~fifo_rx_empty))
                     next_state = ST_READ_FIFO;
             end
 
             ST_READ_FIFO: begin
-                // Выставляем сигнал чтения на 1 такт
                 next_state = ST_LATCH_DATA;
             end
 
             ST_LATCH_DATA: begin
-                // На этом такте данные из FIFO уже валидны, переходим к отправке
                 next_state = ST_SEND_TX;
             end
 
             ST_SEND_TX: begin
-                // Ждем, пока передатчик освободится
                 if (~tx_busy)
                     next_state = ST_WAIT_TX_START;
             end
 
             ST_WAIT_TX_START: begin
-                // Ждем реакции от модуля TX (поднятия tx_busy), 
-                // чтобы не проскочить состояние до начала передачи
                 if (tx_busy)
                     next_state = ST_WAIT_TX_DONE;
             end
 
             ST_WAIT_TX_DONE: begin
-                // Ждем окончания передачи по SPI
                 if (~tx_busy)
                     next_state = ST_IDLE_RX;
             end
@@ -247,31 +256,29 @@ module uart_loopback_fsm #(
         endcase
     end
 
-    // 3. Формирование выходных сигналов и захват данных
-    always_ff @(posedge clk or negedge rst_n) begin
+    always_ff @(posedge clock_global or negedge rst_n) begin
         if (!rst_n) begin
             fifo_rx_rd_en <= 1'b0;
             tx_str        <= 1'b0;
             tx_data       <= '0;
             data_reg      <= '0;
         end else begin
-            // По умолчанию сбрасываем импульсные сигналы
             fifo_rx_rd_en <= 1'b0;
             tx_str        <= 1'b0;
 
             case (state)
                 ST_READ_FIFO: begin
-                    fifo_rx_rd_en <= 1'b1; // Запрашиваем слово из FIFO
+                    fifo_rx_rd_en <= 1'b1;
                 end
 
                 ST_LATCH_DATA: begin
-                    data_reg <= fifo_rx_data; // Сохраняем прочитанное слово
+                    data_reg <= fifo_rx_data;
                 end
 
                 ST_SEND_TX: begin
                     if (!tx_busy) begin
-                        tx_data <= data_reg; // Выставляем данные на шину TX
-                        tx_str  <= 1'b1;     // Формируем строб отправки на 1 такт
+                        tx_data <= data_reg;
+                        tx_str  <= 1'b1;
                     end
                 end
             endcase
@@ -282,39 +289,30 @@ endmodule
 
 
 module uart_tx (
-    input  wire       clk,      // Тактовый сигнал
-    input  wire       rst_n,    // Асинхронный сброс (активный 0)
-    input  wire       tx_str,   // Строб начала передачи
-    input  wire [7:0] tx_data,  // Входные данные (8 бит)
-    output wire       tx_busy,  // Флаг занятости
-    output wire       tx_out    // Выходная линия данных (всегда левый бит буфера)
+    input  wire       rst_n,
+    input  wire       clock_global,
+    input  wire       tx_str,
+    input  wire [7:0] tx_data,
+    output wire       tx_busy,
+    output wire       tx_out,
+    output wire       clk_spi_en_tx
 );
 
-wire clk_mux_tx;
-reg clk_spi_tx;
-wire clk_mux_en;
-
-typedef enum logic [7:0] {STATE_START,STATE_WRITE,STATE_STOP} states_tx;
-states_tx cur_state_tx = STATE_START;
-states_tx next_state_tx = STATE_START;
+  typedef enum logic [7:0] {STATE_START,STATE_WRITE,STATE_STOP} states_tx;
+  states_tx cur_state_tx = STATE_START;
+  states_tx next_state_tx = STATE_START;
 
 
-  always_ff @(posedge clk)
-    if (clk_mux_en)
-      clk_spi_tx <= ~clk_spi_tx;
+  assign clk_spi_en_tx = ((cur_state_tx == STATE_START && next_state_tx == STATE_WRITE) || (cur_state_tx == STATE_WRITE) || (cur_state_tx == STATE_STOP));
 
-  assign clk_mux_en = ((cur_state_tx == STATE_START && next_state_tx == STATE_WRITE) || (cur_state_tx == STATE_WRITE) || (cur_state_tx == STATE_STOP));
-
-  assign clk_mux_tx = clk_mux_en ? clk_spi_tx : clk;
 
     reg load_en;
     reg shift_en;
 
-    // Регистры тракта данных
     reg [7:0] tx_buf;
     reg [2:0] bit_cnt;
 
-    always_ff @(posedge clk_mux_tx or negedge rst_n)
+    always_ff @(posedge clock_global or negedge rst_n)
       if (~rst_n)
         tx_out <= 1'b1;
 		else 
@@ -328,7 +326,7 @@ states_tx next_state_tx = STATE_START;
         tx_out <= 1;
     
 
-    always @(posedge clk_mux_tx or negedge rst_n) begin
+    always @(posedge clock_global or negedge rst_n) begin
         if (!rst_n)
             cur_state_tx <= STATE_START;
         else
@@ -374,7 +372,7 @@ states_tx next_state_tx = STATE_START;
         endcase
     end
 
-    always @(posedge clk_mux_tx or negedge rst_n) begin
+    always @(posedge clock_global or negedge rst_n) begin
         if (!rst_n) begin
             tx_buf  <= 8'hFF;
             bit_cnt <= 3'd0;
