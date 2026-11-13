@@ -38,9 +38,8 @@ if(( cnt_spi_2x == ( period >> 1 >> 1  ) )) begin
 else
   cnt_spi_2x <= cnt_spi_2x + 1'b1;
 
-// assign fifo_tx_data = fifo_rx_data;
 
-spi_loopback_fsm spi_loopback_fsm_inst(
+uart_loopback_fsm uart_loopback_fsm_inst(
     .clk(clk_spi_2x),
     .rst_n(reset),
     .fifo_rx_data(fifo_rx_data),
@@ -64,117 +63,18 @@ uart_rx_sv uart_rx_sv_inst (
 .fifo_rx_data(fifo_rx_data)
 );
 
-
-// uart_rx_sv uart_rx_sv_inst(
-// .clk_spi_2x(clk_spi_2x),
-// .reset(reset),
-// .fromRX(fromRX),
-// .busy(busy),
-// .value(val)
-// );
-
 assign value = fifo_rx_data;
 
-
-spi_tx spi_tx_inst (
-    .clk(clk_spi_2x),      // Тактовый сигнал
-    .rst_n(reset),    // Асинхронный сброс (активный 0)
-    .tx_str(tx_str),   // Строб начала передачи
-    .tx_data(fifo_tx_data),  // Входные данные (8 бит)
-    .tx_busy(tx_busy),  // Флаг занятости
-    .tx_out(spi_data_o)    // Выходная линия данных (всегда левый бит буфера)
+uart_tx uart_tx_inst (
+    .clk(clk_spi_2x),
+    .rst_n(reset),
+    .tx_str(tx_str),
+    .tx_data(fifo_tx_data),
+    .tx_busy(tx_busy),
+    .tx_out(spi_data_o)
 );
 
-
-// uart_tx_sv uart_tx_sv_inst (
-// .clk_spi_2x(clk_spi_2x),
-// .reset(reset),
-// // .start_str(str_tx),
-// .tx_fifo(8'h55),
-// .send_end(send_end),
-// .spi_data_o(spi_data_o)
-// );
-
 endmodule
-
-// module uart_tx_sv (
-//     input logic [DATA_WIDTH-1:0] tx_data,       // Данные для отправки
-//     input logic                  tx_str,        // Строб старта передачи (1 такт)
-//     output logic                  tx_busy        // Флаг занятости передатчика SPI
-
-
-
-
-
-
-
-// input wire clk_spi_2x,
-// input wire reset,
-// // input wire start_str,
-// input wire tx_fifo,
-// output wire send_end,
-// output wire spi_data_o
-
-// );
-// reg start_str = 0;
-// reg [31:0] bit_counter = '0;
-// reg [7:0] send_buf_tx = '1;
-
-// typedef enum logic [7:0] {start_tx,cnt_send_tx,stop_tx} states_tx;
-// states_tx cur_state_tx = start_tx;
-// states_tx next_state_tx = start_tx;
-
-// reg clk_spi = 0;
-
-// always_ff @(posedge clk_spi_2x) begin
-//   // if ((start_str == 1) || (next_state_tx == cnt_send_tx) || (next_state_tx == stop_tx) || (next_state_tx == start_tx))	
-//     clk_spi = ~clk_spi;
-//    start_str <= ~start_str; 
-// end
-
-// always_ff @(posedge clk_spi)
-//   if (~reset)
-//     cur_state_tx <= start_tx;
-//   else
-//     cur_state_tx <= next_state_tx; 
-
-// assign send_end = ((cur_state_tx == start_tx) && (next_state_tx == start_tx) && (~start_str));
-
-// always_ff @(posedge clk_spi)
-//   if (~reset) begin
-//     bit_counter <= 0;
-//     spi_data_o  <= 1;
-//   end
-//   else if (cur_state_tx == start_tx) begin
-//     send_buf_tx <= tx_fifo;
-//     spi_data_o  <= 0;
-//   end
-//   else if (cur_state_tx == cnt_send_tx)
-//     begin
-//       bit_counter <= bit_counter + 1;
-//       send_buf_tx <= {send_buf_tx[6:0],1'b1};
-//       spi_data_o  <= send_buf_tx[7];
-//     end
-//     else if (cur_state_tx == stop_tx) begin
-//       bit_counter <= 0;
-//       send_buf_tx <= 1;
-//     end
-//     else begin
-//       bit_counter <= 0;
-//       send_buf_tx <= 1;
-//     end
-
-// always_comb begin
-//   next_state_tx = cur_state_tx;
-//   case(cur_state_tx)
-//     start_tx: if (start_str) next_state_tx = cnt_send_tx;
-//     cnt_send_tx: if (bit_counter == 7) next_state_tx = stop_tx;
-//     stop_tx: next_state_tx = start_tx;
-//   endcase
-// end
-
-
-// endmodule
 
 
 module uart_rx_sv (
@@ -218,12 +118,12 @@ always_ff @(posedge clk_spi_2x or negedge reset)
 always_ff @(posedge clk_mux or negedge reset)
   if (~reset) begin
     bit_counter <= 0;
-    fifo_rx_data       <= 0;
+    fifo_rx_data <= 0;
   end
   else if (cur_state == count)
     begin
       bit_counter <= bit_counter + 1;
-      fifo_rx_data       <= {fifo_rx_data[6:0],fromRX};
+      fifo_rx_data       <= {fromRX,fifo_rx_data[7:1]};
 
     end
     else
@@ -255,7 +155,7 @@ endmodule
 
 
 
-module spi_loopback_fsm #(
+module uart_loopback_fsm #(
     parameter DATA_WIDTH = 8
 )(
     input  logic                  clk,
@@ -310,7 +210,7 @@ module spi_loopback_fsm #(
         case (state)
             ST_IDLE_RX: begin
                 // Ждем, пока приемник освободится и в FIFO появятся данные
-                if (!rx_busy && !fifo_rx_empty)
+                if ((~rx_busy) && (~fifo_rx_empty))
                     next_state = ST_READ_FIFO;
             end
 
@@ -326,7 +226,7 @@ module spi_loopback_fsm #(
 
             ST_SEND_TX: begin
                 // Ждем, пока передатчик освободится
-                if (!tx_busy)
+                if (~tx_busy)
                     next_state = ST_WAIT_TX_START;
             end
 
@@ -339,11 +239,11 @@ module spi_loopback_fsm #(
 
             ST_WAIT_TX_DONE: begin
                 // Ждем окончания передачи по SPI
-                if (!tx_busy)
+                if (~tx_busy)
                     next_state = ST_IDLE_RX;
             end
 
-            default: next_state = ST_IDLE_RX;
+            default: next_state = state;
         endcase
     end
 
@@ -381,12 +281,12 @@ module spi_loopback_fsm #(
 endmodule
 
 
-module spi_tx (
+module uart_tx (
     input  wire       clk,      // Тактовый сигнал
     input  wire       rst_n,    // Асинхронный сброс (активный 0)
     input  wire       tx_str,   // Строб начала передачи
     input  wire [7:0] tx_data,  // Входные данные (8 бит)
-    output reg        tx_busy,  // Флаг занятости
+    output wire       tx_busy,  // Флаг занятости
     output wire       tx_out    // Выходная линия данных (всегда левый бит буфера)
 );
 
@@ -399,22 +299,20 @@ states_tx cur_state_tx = STATE_START;
 states_tx next_state_tx = STATE_START;
 
 
-always_ff @(posedge clk)
-  if (clk_mux_en)
-    clk_spi_tx = ~clk_spi_tx;
+  always_ff @(posedge clk)
+    if (clk_mux_en)
+      clk_spi_tx <= ~clk_spi_tx;
 
-assign clk_mux_en = ((cur_state_tx == STATE_START && next_state_tx == STATE_WRITE) || (cur_state_tx == STATE_WRITE) || (cur_state_tx == STATE_STOP));
+  assign clk_mux_en = ((cur_state_tx == STATE_START && next_state_tx == STATE_WRITE) || (cur_state_tx == STATE_WRITE) || (cur_state_tx == STATE_STOP));
 
-assign clk_mux_tx = clk_mux_en ? clk_spi_tx : clk;
+  assign clk_mux_tx = clk_mux_en ? clk_spi_tx : clk;
 
-
-    // Внутренние управляющие сигналы от автомата к тракту данных
-    reg load_en;   // Разрешение записи в буфер (включая стартовый 0)
-    reg shift_en;  // Разрешение сдвига и счёта
+    reg load_en;
+    reg shift_en;
 
     // Регистры тракта данных
-    reg [7:0] tx_buf;   // 9-битный буфер: [8] - стартовый бит, [7:0] - данные
-    reg [2:0] bit_cnt;  // Счётчик записи на 8 бит (0..7)
+    reg [7:0] tx_buf;
+    reg [2:0] bit_cnt;
 
     always_ff @(posedge clk_mux_tx or negedge rst_n)
       if (~rst_n)
@@ -425,14 +323,11 @@ assign clk_mux_tx = clk_mux_en ? clk_spi_tx : clk;
       else if (cur_state_tx == STATE_STOP) 
         tx_out <= 1'b1;
       else if (cur_state_tx == STATE_WRITE)
-        tx_out <= tx_buf[7];
+        tx_out <= tx_buf[0];
       else
         tx_out <= 1;
     
 
-    // =========================================================================
-    // 1. ПЕРВАЯ ЧАСТЬ FSM: Переключение состояний (последовательностная логика)
-    // =========================================================================
     always @(posedge clk_mux_tx or negedge rst_n) begin
         if (!rst_n)
             cur_state_tx <= STATE_START;
@@ -440,10 +335,7 @@ assign clk_mux_tx = clk_mux_en ? clk_spi_tx : clk;
             cur_state_tx <= next_state_tx;
     end
 
-    // =========================================================================
-    // 2. ВТОРАЯ ЧАСТЬ FSM: Комбинационная схема переходов и управления
-    // =========================================================================
-    always @(*) begin
+    always_comb begin
         next_state_tx = cur_state_tx;
         load_en    = 1'b0;
         shift_en   = 1'b0;
@@ -452,9 +344,9 @@ assign clk_mux_tx = clk_mux_en ? clk_spi_tx : clk;
         case (cur_state_tx)
             STATE_START: begin
                 if (tx_str) begin
-                    load_en    = 1'b1;        // Загружаем {1'b0, tx_data} в буфер
-                    tx_busy    = 1'b1;        // Выставляем busy
-                    next_state_tx = STATE_WRITE; // Переход в запись
+                    load_en    = 1'b1;
+                    tx_busy    = 1'b1;
+                    next_state_tx = STATE_WRITE;
                 end else begin
                     tx_busy    = 1'b0;
                     next_state_tx = STATE_START;
@@ -462,41 +354,37 @@ assign clk_mux_tx = clk_mux_en ? clk_spi_tx : clk;
             end
 
             STATE_WRITE: begin
-                shift_en = 1'b1;              // Сдвигаем буфер и считаем 8 бит
+                shift_en = 1'b1;
                 tx_busy  = 1'b1;
 
                 if (bit_cnt == 3'd7)
-                    next_state_tx = STATE_STOP;  // Отсчитали 8 бит -> на стоп
+                    next_state_tx = STATE_STOP;
                 else
                     next_state_tx = STATE_WRITE;
             end
 
             STATE_STOP: begin
-                // shift_en   = 1'b1;            // Выдвигаем последний 8-й бит, на выход встаёт 1 (стоп)
-                tx_busy    = 1'b1;            // Занят во время передачи стоп-бита
-                next_state_tx = STATE_START;     // Возврат в начало
+                tx_busy    = 1'b1;
+                next_state_tx = STATE_START;
             end
 
             default: begin
-                next_state_tx = STATE_START;
+                next_state_tx = cur_state_tx;
             end
         endcase
     end
 
-    // =========================================================================
-    // 3. ВЫНЕСЕННАЯ ЛОГИКА: Передающий буфер и счётчик на 8 бит
-    // =========================================================================
     always @(posedge clk_mux_tx or negedge rst_n) begin
         if (!rst_n) begin
-            tx_buf  <= 8'hFF;                // При сбросе буфер заполнен 1'b1
+            tx_buf  <= 8'hFF;
             bit_cnt <= 3'd0;
         end else begin
             if (load_en) begin
-                tx_buf  <= {tx_data};   // Записываем стартовый 0 и 8 бит данных
-                bit_cnt <= 3'd0;              // Сбрасываем счётчик
+                tx_buf  <= {tx_data};
+                bit_cnt <= 3'd0;
             end else if (shift_en) begin
-                tx_buf  <= {tx_buf[6:0], 1'b1}; // Сдвиг справа налево с заполнением 1'b1
-                bit_cnt <= bit_cnt + 3'd1;      // Увеличиваем счётчик бит
+                tx_buf  <= {1'b1,tx_buf[7:1]};
+                bit_cnt <= bit_cnt + 3'd1;
             end
         end
     end
